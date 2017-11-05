@@ -26,6 +26,9 @@ type Ticker struct {
    Last_updated uint32 `json:",string"`
 }
 
+func (t Ticker) VolSpike (perc float32) {
+}
+
 func getTicker (url string) Ticker {
    // Allocate struct for json
    var t Ticker
@@ -49,33 +52,23 @@ func getTicker (url string) Ticker {
    return t
 }
 
-// Concurrent channel runs core when invoked
-/*
-go func() {
-   for {
-      select {
-         // On invoke
-         case <- ticker.C:
-            for _, s := range symbols {
-               log.Println( getTicker(url_base + s) )
-            }
-         // On close channel
-         case <- quit:
-            ticker.Stop()
-            return
-      }
-   }
-}()
-*/
-
 func main() {
+   // anomaly thresh as a percentage
+   const anomThresh = .02
    // CoinMarketCap API
-   var url_base = "https://api.coinmarketcap.com/v1/ticker/"
+   var urlBase = "https://api.coinmarketcap.com/v1/ticker/"
    // Symbols to watch
-   symbols := [2]string{
-            "bitcoin",
-            "iota",
-         }
+   symbols := []string{
+      "bitcoin",
+      "iota",
+   }
+
+   // Store last ticks to compare with current
+   lastTicks := make([]Ticker, len(symbols))
+   // Initial load
+   for i, s := range symbols {
+      lastTicks[i] = getTicker(urlBase + s)
+   }
 
    // Invoke channel on repeat to monitor coins
    ticker := time.NewTicker(1 * time.Second)
@@ -88,8 +81,20 @@ func main() {
          select {
             // On invoke
             case <- ticker.C:
-               for _, s := range symbols {
-                  log.Println( getTicker(url_base + s) )
+               // Start a list to store anomalies detected
+               anomalies := make([]Ticker, 0)
+               // Check all symbols
+               for i, s := range symbols {
+                  // Fetch latest data
+                  t := getTicker(urlBase + s)
+                  // If anomaly, add to list
+                  if (t.Market_cap_usd -
+                        lastTicks[i].Market_cap_usd) > anomThresh {
+                     anomalies = append(anomalies, t)
+                  }
+
+                  // Finally the current becomes the last
+                  lastTicks[i] = t
                }
             // On close channel
             case <- quit:
