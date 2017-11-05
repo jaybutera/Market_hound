@@ -1,7 +1,7 @@
 package main
 
 import (
-   "fmt"
+   "log"
    "net/http"
    "io/ioutil"
    "encoding/json"
@@ -32,15 +32,18 @@ func getTicker (url string) Ticker {
    // Call API
    resp, err := http.Get(url)
    if err != nil {
-      fmt.Println(err)
+      log.Println(err)
    }
    // Read response
    defer resp.Body.Close()
    body, _ := ioutil.ReadAll(resp.Body)
 
    // Bytearray to struct
-   //fmt.Println(string(body[2:len(body)-2]))
-   json.Unmarshal(body[1:len(body)-2], &t)
+   //log.Println(string(body[2:len(body)-2]))
+   err1 := json.Unmarshal(body[1:len(body)-2], &t)
+   if err1 != nil {
+      log.Println(err1)
+   }
 
    return t
 }
@@ -55,6 +58,6 @@ func main() {
          }
 
    for _, s := range symbols {
-      fmt.Println( getTicker(url_base + s) )
+      log.Println( getTicker(url_base + s) )
    }
 }
