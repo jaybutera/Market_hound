@@ -5,6 +5,7 @@ import (
    "net/http"
    "io/ioutil"
    "encoding/json"
+   "time"
 )
 
 // Ticker JSON structure
@@ -48,6 +49,25 @@ func getTicker (url string) Ticker {
    return t
 }
 
+// Concurrent channel runs core when invoked
+/*
+go func() {
+   for {
+      select {
+         // On invoke
+         case <- ticker.C:
+            for _, s := range symbols {
+               log.Println( getTicker(url_base + s) )
+            }
+         // On close channel
+         case <- quit:
+            ticker.Stop()
+            return
+      }
+   }
+}()
+*/
+
 func main() {
    // CoinMarketCap API
    var url_base = "https://api.coinmarketcap.com/v1/ticker/"
@@ -57,7 +77,28 @@ func main() {
             "iota",
          }
 
-   for _, s := range symbols {
-      log.Println( getTicker(url_base + s) )
-   }
+   // Invoke channel on repeat to monitor coins
+   ticker := time.NewTicker(1 * time.Second)
+   // Setup exit strategy
+   quit := make(chan struct{})
+
+   // Concurrent channel runs core when invoked
+   go func() {
+      for {
+         select {
+            // On invoke
+            case <- ticker.C:
+               for _, s := range symbols {
+                  log.Println( getTicker(url_base + s) )
+               }
+            // On close channel
+            case <- quit:
+               ticker.Stop()
+               return
+         }
+      }
+   }()
+
+   // Wait forever
+   <-make(chan int)
 }
