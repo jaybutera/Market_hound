@@ -25,23 +25,36 @@ type Ticker struct {
    Last_updated uint32 `json:",string"`
 }
 
+func getTicker (url string) Ticker {
+   // Allocate struct for json
+   var t Ticker
+
+   // Call API
+   resp, err := http.Get(url)
+   if err != nil {
+      fmt.Println(err)
+   }
+   // Read response
+   defer resp.Body.Close()
+   body, _ := ioutil.ReadAll(resp.Body)
+
+   // Bytearray to struct
+   //fmt.Println(string(body[2:len(body)-2]))
+   json.Unmarshal(body[1:len(body)-2], &t)
+
+   return t
+}
+
 func main() {
    // CoinMarketCap API
    var url_base = "https://api.coinmarketcap.com/v1/ticker/"
    // Symbols to watch
-   symbols := "bitcoin"
+   symbols := [2]string{
+            "bitcoin",
+            "iota",
+         }
 
-   resp, err := http.Get(url_base + symbols)
-   if err != nil {
-      fmt.Println(err)
+   for _, s := range symbols {
+      fmt.Println( getTicker(url_base + s) )
    }
-
-   defer resp.Body.Close()
-   body, _ := ioutil.ReadAll(resp.Body)
-
-   fmt.Println(string(body[2:len(body)-2]))
-   var t Ticker
-   json.Unmarshal(body[1:len(body)-2], &t)
-
-   fmt.Println(t)
 }
