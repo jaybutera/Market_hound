@@ -6,6 +6,8 @@ import (
    "io/ioutil"
    "encoding/json"
    "time"
+   "github.com/gorilla/mux"
+   "github.com/gorilla/websocket"
 )
 
 // Ticker JSON structure
@@ -24,9 +26,6 @@ type Ticker struct {
    Percent_change_24h float32 `json:",string"`
    Percent_change_7d float32 `json:",string"`
    Last_updated uint32 `json:",string"`
-}
-
-func (t Ticker) VolSpike (perc float32) {
 }
 
 func getTicker (url string) Ticker {
@@ -52,6 +51,19 @@ func getTicker (url string) Ticker {
    return t
 }
 
+func GetAnomalies(w http.ResponseWriter, r *http.Request) {
+   //json.NewEncoder(w).Encode()
+}
+
+// Configure websockets
+var upgrader = websocket.Upgrader{
+   ReadBufferSize: 1024,
+   WriteBufferSize: 1024,
+   CheckOrigin: func(r *http.Request) bool {
+      return true
+   },
+}
+
 func main() {
    // anomaly thresh as a percentage
    const anomThresh = .02
@@ -62,6 +74,40 @@ func main() {
       "bitcoin",
       "iota",
    }
+   // Channel recieves anomalies as they are found
+   anomWatch := make(chan []Ticker)
+
+   // Set up API server
+   router := mux.NewRouter()
+   router.HandleFunc("/anomalies", GetAnomalies).Methods("GET")
+   router.HandleFunc("/websocket", func(w http.ResponseWriter, r *http.Request) {
+      conn, err := upgrader.Upgrade(w, r, nil)
+      if err != nil {
+         log.Println(err)
+         return
+      }
+
+      log.Println("Client subscribed")
+
+      for {
+         // Wait for new anomaly list
+         anoms := <-anomWatch
+         // Serialize list to json
+         jsonList, err := json.Marshal(anoms)
+         if err != nil {
+            log.Println(err)
+            continue
+         }
+         // Send message over ws
+         err = conn.WriteMessage(websocket.TextMessage, jsonList)
+         if err != nil {
+            log.Println(err)
+            continue
+         }
+      }
+   })
+
+   go http.ListenAndServe(":3000", router)
 
    // Store last ticks to compare with current
    lastTicks := make([]Ticker, len(symbols))
@@ -87,6 +133,7 @@ func main() {
                for i, s := range symbols {
                   // Fetch latest data
                   t := getTicker(urlBase + s)
+                  log.Println(t)
                   // If anomaly, add to list
                   if (t.Market_cap_usd -
                         lastTicks[i].Market_cap_usd) > anomThresh {
@@ -96,6 +143,10 @@ func main() {
                   // Finally the current becomes the last
                   lastTicks[i] = t
                }
+
+               // Send anomalies list to channel
+               anomWatch <- anomalies
+
             // On close channel
             case <- quit:
                ticker.Stop()
