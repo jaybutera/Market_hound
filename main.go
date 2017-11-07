@@ -66,7 +66,7 @@ var upgrader = websocket.Upgrader{
 
 func main() {
    // anomaly thresh as a percentage
-   const anomThresh = .02
+   const anomThresh = .0
    // CoinMarketCap API
    var urlBase = "https://api.coinmarketcap.com/v1/ticker/"
    // Symbols to watch
@@ -136,7 +136,7 @@ func main() {
                   log.Println(t)
                   // If anomaly, add to list
                   if (t.Market_cap_usd -
-                        lastTicks[i].Market_cap_usd) > anomThresh {
+                        lastTicks[i].Market_cap_usd) >= anomThresh {
                      anomalies = append(anomalies, t)
                   }
 
@@ -144,8 +144,11 @@ func main() {
                   lastTicks[i] = t
                }
 
-               // Send anomalies list to channel
-               anomWatch <- anomalies
+               // Send anomalies list to channel if someones is listening
+               select {
+               case anomWatch <- anomalies:
+               default:
+               }
 
             // On close channel
             case <- quit:
