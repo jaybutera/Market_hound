@@ -67,7 +67,7 @@ var upgrader = websocket.Upgrader{
 
 func main() {
    // anomaly thresh as a percentage
-   const anomThresh = .0
+   const anomThresh = .5
    // CoinMarketCap API
    var urlBase = "https://api.coinmarketcap.com/v1/ticker/"
    // Symbols to watch
@@ -161,7 +161,7 @@ func main() {
    }
 
    // Invoke channel on repeat to monitor coins
-   ticker := time.NewTicker(10 * time.Second)
+   ticker := time.NewTicker(10 * time.Minute)
    // Setup exit strategy
    quit := make(chan struct{})
 
