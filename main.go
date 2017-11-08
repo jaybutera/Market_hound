@@ -73,13 +73,44 @@ func main() {
    // Symbols to watch
    symbols := []string{
       "bitcoin",
+      "ethereum",
+      "ripple",
+      "litecoin",
+      "dash",
+      "neo",
+      "nem",
+      "monero",
       "iota",
+      "qtum",
+      "zcash",
+      "bitconnect",
+      "lisk",
+      "cardano",
+      "stellar",
+      "hshare",
+      "waves",
+      "stratis",
+      "komodo",
+      "ark",
+      "electroneum",
+      "steem",
+      "decred",
+      "bitcoindark",
+      "bitshares",
+      "pivx",
+      "vertcoin",
+      "monacoin",
+      "factom",
+      "dogecoin",
    }
    // Channel recieves anomalies as they are found
    anomWatch := make(chan []Tuple)
 
    // Set up API server
    router := mux.NewRouter()
+   router.HandleFunc("/sup", func(w http.ResponseWriter, r *http.Request) {
+      json.NewEncoder(w).Encode("nigga")
+   })
    router.HandleFunc("/websocket", func(w http.ResponseWriter, r *http.Request) {
       conn, err := upgrader.Upgrade(w, r, nil)
       if err != nil {
@@ -133,7 +164,7 @@ func main() {
                for i, s := range symbols {
                   // Fetch latest data
                   t := getTicker(urlBase + s)
-                  log.Println(t)
+                  //log.Println(t)
 
                   // Compute perc difference in volume over time
                   volDiff := ((t.Market_cap_usd / lastTicks[i].Market_cap_usd) - 1) * 100
