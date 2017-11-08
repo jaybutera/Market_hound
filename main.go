@@ -58,8 +58,8 @@ func getTicker (url string) Ticker {
 
 // Configure websockets
 var upgrader = websocket.Upgrader{
-   ReadBufferSize: 1024,
-   WriteBufferSize: 1024,
+   ReadBufferSize: 4096,
+   WriteBufferSize: 4096,
    CheckOrigin: func(r *http.Request) bool {
       return true
    },
@@ -123,7 +123,6 @@ func main() {
       log.Println("Client subscribed")
 
       // Initial message of last computed anomalies list
-      log.Println(lastAnoms)
       jsonList, err := json.Marshal(lastAnoms)
       if err != nil {
          log.Println(err)
@@ -145,6 +144,7 @@ func main() {
          // Send message over ws
          err = conn.WriteMessage(websocket.TextMessage, jsonList)
          if err != nil {
+            log.Println("Error writing socket message to client")
             log.Println(err)
             continue
          }
@@ -182,7 +182,7 @@ func main() {
                   // Compute perc difference in volume over time
                   volDiff := ((t.Market_cap_usd / lastTicks[i].Market_cap_usd) - 1) * 100
                   // If anomaly, add to list
-                  if volDiff >= anomThresh || volDiff <= anomThresh {
+                  if volDiff >= anomThresh || volDiff <= -anomThresh {
                      anomalies = append(anomalies, Tuple{Tick: t, VolumeSpike: volDiff})
                   }
 
@@ -193,6 +193,7 @@ func main() {
                // Send anomalies list to channel if someones is listening
                select {
                case anomWatch <- anomalies:
+                  log.Println("Sent anomalies to client")
                   lastAnoms = anomalies
                default:
                   lastAnoms = anomalies
