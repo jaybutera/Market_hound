@@ -105,6 +105,8 @@ func main() {
    }
    // Channel recieves anomalies as they are found
    anomWatch := make(chan []Tuple)
+   // Record the last list of anomalies computed
+   var lastAnoms []Tuple
 
    // Set up API server
    router := mux.NewRouter()
@@ -119,6 +121,17 @@ func main() {
       }
 
       log.Println("Client subscribed")
+
+      // Initial message of last computed anomalies list
+      log.Println(lastAnoms)
+      jsonList, err := json.Marshal(lastAnoms)
+      if err != nil {
+         log.Println(err)
+      }
+      err = conn.WriteMessage(websocket.TextMessage, jsonList)
+      if err != nil {
+         log.Println(err)
+      }
 
       for {
          // Wait for new anomaly list
@@ -148,7 +161,7 @@ func main() {
    }
 
    // Invoke channel on repeat to monitor coins
-   ticker := time.NewTicker(3 * time.Second)
+   ticker := time.NewTicker(10 * time.Second)
    // Setup exit strategy
    quit := make(chan struct{})
 
@@ -180,7 +193,9 @@ func main() {
                // Send anomalies list to channel if someones is listening
                select {
                case anomWatch <- anomalies:
+                  lastAnoms = anomalies
                default:
+                  lastAnoms = anomalies
                }
 
             // On close channel
