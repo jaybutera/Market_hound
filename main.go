@@ -28,6 +28,11 @@ type Ticker struct {
    Last_updated uint32 `json:",string"`
 }
 
+type Tuple struct {
+   Tick Ticker
+   VolumeSpike float32
+}
+
 func getTicker (url string) Ticker {
    // Allocate struct for json
    var t Ticker
@@ -51,10 +56,6 @@ func getTicker (url string) Ticker {
    return t
 }
 
-func GetAnomalies(w http.ResponseWriter, r *http.Request) {
-   //json.NewEncoder(w).Encode()
-}
-
 // Configure websockets
 var upgrader = websocket.Upgrader{
    ReadBufferSize: 1024,
@@ -75,11 +76,10 @@ func main() {
       "iota",
    }
    // Channel recieves anomalies as they are found
-   anomWatch := make(chan []Ticker)
+   anomWatch := make(chan []Tuple)
 
    // Set up API server
    router := mux.NewRouter()
-   router.HandleFunc("/anomalies", GetAnomalies).Methods("GET")
    router.HandleFunc("/websocket", func(w http.ResponseWriter, r *http.Request) {
       conn, err := upgrader.Upgrade(w, r, nil)
       if err != nil {
@@ -107,7 +107,7 @@ func main() {
       }
    })
 
-   go http.ListenAndServe(":3000", router)
+   go http.ListenAndServe(":8000", router)
 
    // Store last ticks to compare with current
    lastTicks := make([]Ticker, len(symbols))
@@ -117,7 +117,7 @@ func main() {
    }
 
    // Invoke channel on repeat to monitor coins
-   ticker := time.NewTicker(1 * time.Second)
+   ticker := time.NewTicker(3 * time.Second)
    // Setup exit strategy
    quit := make(chan struct{})
 
@@ -128,16 +128,18 @@ func main() {
             // On invoke
             case <- ticker.C:
                // Start a list to store anomalies detected
-               anomalies := make([]Ticker, 0)
+               anomalies := make([]Tuple, 0)
                // Check all symbols
                for i, s := range symbols {
                   // Fetch latest data
                   t := getTicker(urlBase + s)
                   log.Println(t)
+
+                  // Compute perc difference in volume over time
+                  volDiff := ((t.Market_cap_usd / lastTicks[i].Market_cap_usd) - 1) * 100
                   // If anomaly, add to list
-                  if (t.Market_cap_usd -
-                        lastTicks[i].Market_cap_usd) >= anomThresh {
-                     anomalies = append(anomalies, t)
+                  if volDiff >= anomThresh {
+                     anomalies = append(anomalies, Tuple{Tick: t, VolumeSpike: volDiff})
                   }
 
                   // Finally the current becomes the last
