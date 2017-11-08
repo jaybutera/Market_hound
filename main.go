@@ -182,7 +182,7 @@ func main() {
                   // Compute perc difference in volume over time
                   volDiff := ((t.Market_cap_usd / lastTicks[i].Market_cap_usd) - 1) * 100
                   // If anomaly, add to list
-                  if volDiff >= anomThresh {
+                  if volDiff >= anomThresh || volDiff <= anomThresh {
                      anomalies = append(anomalies, Tuple{Tick: t, VolumeSpike: volDiff})
                   }
 
